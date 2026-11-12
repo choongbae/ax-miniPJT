@@ -128,8 +128,10 @@ input[type="text"], input[type="password"], input[type="number"], select {
 .banner h3 { font-size: 14px; margin-bottom: 8px; }
 .banner ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .banner li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.banner.reco { background: var(--good-soft); border: 1px solid var(--good); }
 .banner.draft { background: var(--accent-soft); border: 1px solid var(--accent); display: flex; flex-direction: column; gap: 8px; }
 .banner.draft .row > .btn { flex: 1 1 140px; }
+.btn.quiet-danger { background: transparent; color: var(--bad); border: 1px solid var(--bad); font-weight: 600; }
 .btn.danger { background: var(--bad); color: #fff; }
 .warn { padding: 10px 12px; border-radius: 8px; background: var(--bad-soft); color: var(--bad); display: flex; flex-direction: column; gap: 8px; }
 .notice { margin-bottom: 14px; padding: 10px 12px; border-radius: var(--radius); background: var(--warn-soft); color: var(--warn); }
@@ -202,3 +204,11 @@ input[type="text"], input[type="password"], input[type="number"], select {
 @media (prefers-reduced-motion: no-preference) {
   .btn, .chip { transition: background-color 0.15s, color 0.15s; }
 }
+
+/* 확인 팝업 (T40) */
+.confirm-dialog { border: 0; border-radius: var(--radius); padding: 20px; width: min(420px, calc(100vw - 32px)); background: var(--surface); color: var(--ink); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); }
+.confirm-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+.confirm-dialog h3 { font-size: 17px; margin-bottom: 10px; }
+.confirm-dialog p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.confirm-dialog .row { justify-content: flex-end; margin-top: 14px; }
+.confirm-dialog .row .btn { flex: 0 1 auto; }

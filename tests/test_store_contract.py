@@ -219,3 +219,23 @@ def test_records_for_weeks_returns_all_records_of_the_wanted_weeks_in_one_call(s
     assert got[WEEK]["양손 레이업"] == {"shots": [], "ratings": ["쉬웠음"]}
     assert got["2026-W45"]["양손 레이업"]["ratings"] == ["어려웠음"]
     assert "2026-W40" not in got and store.records_for_weeks("u", []) == {}
+
+
+def test_delete_plan_removes_only_the_plan(store):
+    store.save_plan("u", WEEK, plan_of("3점 캐치앤슛"))
+    store.save_plan("u", "2026-W45", plan_of("3점 캐치앤슛"))
+    store.save_plan("v", WEEK, plan_of("3점 캐치앤슛"))
+    store.add_shot("u", "3점 캐치앤슛", WEEK, 20, 10)
+    assert store.delete_plan("u", WEEK) is True
+    assert store.get_plan("u", WEEK) is None and store.plan_weeks("u") == ["2026-W45"]
+    assert store.get_plan("v", WEEK) is not None  # 다른 사용자
+    assert store.shots("u", "3점 캐치앤슛", WEEK) == [(20, 10)]  # 기록은 건드리지 않는다
+    assert store.delete_plan("u", WEEK) is False  # 이미 없다
+
+
+def test_delete_drafts_only_removes_that_users_drafts_of_that_week(tmp_path):
+    s = SqliteStore(tmp_path / "d.db")
+    a, _ = s.create_draft("u", WEEK, "2026-11-10T00:00:00+00:00")
+    assert s.delete_drafts("u", "2026-W47") == [] and s.get_draft(a) is not None
+    assert s.delete_drafts("v", WEEK) == [] and s.get_draft(a) is not None
+    assert s.delete_drafts("u", WEEK) == [a] and s.get_draft(a) is None

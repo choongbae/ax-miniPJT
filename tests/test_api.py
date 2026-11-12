@@ -111,6 +111,7 @@ def test_query_contract_paths_and_schemas_are_unchanged():
         "/query", "/auth/register", "/auth/login", "/auth/logout", "/auth/me",
         "/plans", "/plans/{plan_id}/decision", "/plans/current", "/plans/weeks", "/progress", "/records", "/records/week",
     }
+    assert set(schema["paths"]["/plans"]) == {"post", "delete"}  # 웹 전용: 계획 만들기와 주별 계획 삭제 (T40)
     req = schema["components"]["schemas"]["QueryRequest"]
     assert list(req["properties"]) == ["question"] and req["required"] == ["question"]
     res = schema["components"]["schemas"]["QueryResult"]

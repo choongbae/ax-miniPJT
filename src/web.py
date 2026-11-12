@@ -21,6 +21,7 @@ from src.knowledge import cards_by_name
 from src.models import RATINGS, Drill, WeeklyPlan
 from src.orchestrator import judge_last_week
 from src.progress import build_progress
+from src.recommend import field_record_counts, recommend_other_fields
 from src.records import judge_week, previous_week_keys, week_key, week_start
 from src.retriever import load_menu_docs
 from src.tools import DrillJudgment, judge_drill, load_drills, validate_user_input
@@ -88,6 +89,14 @@ class DayOut(BaseModel):
     drills: list[DrillOut]
 
 
+class RecommendationOut(BaseModel):
+    kept: str  # 상향이지만 올릴 곳이 없어 유지하는 메뉴
+    menu: str  # 추천하는 다른 분야 메뉴
+    field: str
+    difficulty: str
+    text: str
+
+
 class PlanOut(BaseModel):
     week: str
     days: list[DayOut]
@@ -95,6 +104,7 @@ class PlanOut(BaseModel):
     notices: list[str] = Field(default_factory=list)
     history: list[str] = Field(default_factory=list)
     last_week: list[JudgmentOut] = Field(default_factory=list)
+    recommendations: list[RecommendationOut] = Field(default_factory=list)
 
 
 class PlanResponse(BaseModel):
@@ -105,6 +115,11 @@ class PlanResponse(BaseModel):
     message: str = ""
     violations: list[str] = Field(default_factory=list)
     plan: PlanOut | None = None
+
+
+class DeletedOut(BaseModel):
+    week: str
+    deleted_records: int  # 계획과 함께 지워진 그 주의 기록 건수
 
 
 class WeeksOut(BaseModel):
@@ -201,6 +216,7 @@ def build_plan_out(week: str, plan: WeeklyPlan, by_name: dict[str, Drill], meta:
         notices=meta.get("notices", []),
         history=meta.get("history", []),
         last_week=[JudgmentOut(**j) for j in meta.get("last_week", [])],
+        recommendations=[RecommendationOut(**r) for r in meta.get("recommendations", [])],
     )
 
 
@@ -246,8 +262,10 @@ def add_web_routes(
         except Exception:  # 정리 실패가 사용자 요청을 막으면 안 된다
             pass
 
-    def plan_meta(state) -> dict:
+    def plan_meta(state, user_id: str, week: str) -> dict:
         user = state["user"]
+        in_plan = {pd.name for day in state["plan"].days for pd in day.drills}
+        counts = field_record_counts(app.state.store, user_id, week, catalog)
         return {
             "input": {
                 "position": user.position, "level": user.level, "is_beginner": user.is_beginner, "goals": user.goals,
@@ -257,6 +275,8 @@ def add_web_routes(
             "notices": state.get("notices", []),
             "history": state.get("history", []),
             "last_week": [_judgment_out(j) for j in state.get("judgments", [])],
+            # 올릴 곳이 없는 상향은 그 메뉴를 유지하고 다른 분야를 추천한다 (규칙, 모델 아님)
+            "recommendations": [r.as_dict() for r in recommend_other_fields(state.get("judgments"), catalog, user, counts, in_plan)],
         }
 
     # --- 계획 ---------------------------------------------------------------------
@@ -308,7 +328,7 @@ def add_web_routes(
         resets = app.state.store.count_week_records(user_id, week) if replaces else 0
         return PlanResponse(
             status="pending", plan_id=plan_id, resets_records=resets,
-            plan=build_plan_out(week, state["plan"], by_name, plan_meta(state)),
+            plan=build_plan_out(week, state["plan"], by_name, plan_meta(state, user_id, week)),
         )
 
     @app.post("/plans/{plan_id}/decision", response_model=PlanResponse)
@@ -324,14 +344,32 @@ def add_web_routes(
         drop_draft(plan_id)
         if state.get("approval") != "confirm":
             return PlanResponse(status="rejected", message="이 계획은 저장하지 않았어요.")
-        meta = plan_meta(state)
         store, week = app.state.store, draft["week"]
+        meta = plan_meta(state, user_id, week)
         replaces = store.get_plan(user_id, week) is not None
         store.save_plan(user_id, week, state["plan"], meta)
         removed = store.delete_week_records(user_id, week) if replaces else 0  # 교체한 주의 수행 기록은 새 계획과 맞지 않아 초기화한다
         return PlanResponse(
             status="confirmed", resets_records=removed, plan=build_plan_out(week, state["plan"], by_name, meta)
         )
+
+    @app.delete("/plans", response_model=DeletedOut)
+    def delete_plan(request: Request, week: str = Query(...)) -> DeletedOut:
+        """선택한 주의 계획을 지운다. 그 주의 수행 기록도 함께 지우고(되돌릴 수 없다), 그 주의 승인 대기 초안도 정리한다.
+
+        주를 반드시 적어야 한다(빠뜨려서 이번 주가 지워지는 일이 없게)."""
+        user_id = require_login(request)
+        week = resolve_week(week)
+        store = app.state.store
+        if store.get_plan(user_id, week) is None:
+            raise HTTPException(status_code=404, detail="이 주에는 삭제할 계획이 없어요.")
+        for draft_id in store.delete_drafts(user_id, week):
+            try:
+                checkpointer().delete_thread(draft_id)
+            except Exception:  # 정리 실패가 삭제를 막으면 안 된다
+                pass
+        store.delete_plan(user_id, week)
+        return DeletedOut(week=week, deleted_records=store.delete_week_records(user_id, week))
 
     @app.get("/plans/weeks", response_model=WeeksOut)
     def plan_weeks(request: Request) -> WeeksOut:

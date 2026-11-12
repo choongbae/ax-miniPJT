@@ -136,6 +136,16 @@ class RecordStore:
                 slot["shots"].append((e["attempts"], e["makes"]))
         return out
 
+    def delete_plan(self, user_id: str, week: str) -> bool:
+        """사용자의 그 주 계획을 지운다. 지웠으면 True, 원래 없었으면 False. 기록은 건드리지 않는다."""
+        with self._lock:
+            keep = [e for e in self._entries if not (e["user_id"] == user_id and e["week"] == week and "plan" in e)]
+            removed = len(keep) != len(self._entries)
+            if removed:
+                self._entries = keep
+                self._save()
+            return removed
+
     def count_week_records(self, user_id: str, week: str) -> int:
         """사용자가 그 주에 입력한 기록(슛 세션 + 자기평가) 건수. 계획은 세지 않는다."""
         return sum(1 for e in self._entries if e["user_id"] == user_id and e["week"] == week and "plan" not in e)

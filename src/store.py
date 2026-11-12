@@ -171,6 +171,17 @@ class SqliteStore:
             out.setdefault(r["week"], {}).setdefault(r["drill"], {"shots": [], "ratings": []})["ratings"].append(r["rating"])
         return out
 
+    def delete_plan(self, user_id: str, week: str) -> bool:
+        with self._conn() as conn:
+            return conn.execute("DELETE FROM plans WHERE user_id = ? AND week = ?", (user_id, week)).rowcount > 0
+
+    def delete_drafts(self, user_id: str, week: str) -> list[str]:
+        """사용자의 그 주 승인 대기 초안을 지우고 지운 초안 ID를 돌려준다 (체크포인트 정리에 쓴다)."""
+        with self._conn() as conn:
+            ids = [r["plan_id"] for r in conn.execute("SELECT plan_id FROM plan_drafts WHERE user_id = ? AND week = ?", (user_id, week))]
+            conn.execute("DELETE FROM plan_drafts WHERE user_id = ? AND week = ?", (user_id, week))
+        return ids
+
     def count_week_records(self, user_id: str, week: str) -> int:
         with self._conn() as conn:
             return sum(

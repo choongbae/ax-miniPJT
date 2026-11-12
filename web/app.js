@@ -257,6 +257,27 @@
     return { node: h("section", { class: "card form-card" }, h("h2", {}, "내 조건"), form), fill, setFirstPlan, submit: () => form.requestSubmit() };
   }
 
+  // ---- 확인 팝업 (<dialog>) ----------------------------------------------------------------
+  // 되돌릴 수 없는 일을 하기 전에 사용자의 확인을 받는다. 취소(버튼, Esc)가 기본이고, 확인 버튼을 눌러야만 true.
+  function confirmDialog({ title, lines, okText }) {
+    return new Promise((resolve) => {
+      const dialog = h("dialog", { class: "confirm-dialog", "aria-labelledby": "confirm-title" });
+      const cancel = h("button", { class: "btn ghost", type: "button", onclick: () => dialog.close("cancel") }, "취소");
+      const ok = h("button", { class: "btn danger", type: "button", onclick: () => dialog.close("ok") }, okText);
+      dialog.append(h("h3", { id: "confirm-title" }, title), ...lines.map((line) => h("p", {}, line)), h("div", { class: "row" }, cancel, ok));
+      dialog.addEventListener("close", () => {
+        const yes = dialog.returnValue === "ok";
+        dialog.remove();
+        resolve(yes);
+      });
+      document.body.append(dialog);
+      dialog.showModal();
+      cancel.focus(); // 실수로 Enter를 눌러도 삭제되지 않게 취소에 초점을 둔다
+    });
+  }
+
+  const hooks = { deletePlan: null }; // 본 화면이 채우는 동작 (보드가 삭제 버튼을 그릴 때 쓴다)
+
   // ---- 주 계산 (ISO 8601 주, 월요일에 시작. 서버의 week_key와 같은 규칙) ---------------------------
   const DAY_MS = 86400000;
   const WEEK_RANGE = 52; // 서버가 받는 범위: 이번 주 기준 앞뒤 52주
@@ -483,7 +504,11 @@
         "div",
         { class: "board-head" },
         h("h2", {}, mode === "draft" ? "계획 초안" : "주간 계획"),
-        h("span", { class: "muted" }, `${plan.week} (${weekLabel(plan.week)})`)
+        h("span", { class: "muted" }, `${plan.week} (${weekLabel(plan.week)})`),
+        // 확정된 계획에만 삭제 버튼이 있다 (초안은 확정하지 않으면 저장되지 않으니 삭제할 것이 없다)
+        mode !== "draft" && hooks.deletePlan
+          ? h("button", { class: "btn quiet-danger small", type: "button", onclick: () => hooks.deletePlan(plan) }, "이 주 계획 삭제")
+          : null
       ),
       h("p", { class: "summary" }, summary)
     );
@@ -506,6 +531,23 @@
             {},
             plan.last_week.map((j) =>
               h("li", {}, h("strong", {}, j.drill), verdictBadge(j.verdict), h("span", { class: "muted" }, j.reason))
+            )
+          )
+        )
+      );
+    }
+    if ((plan.recommendations || []).length) {
+      // 올릴 곳이 없는 상향: 그 메뉴는 계획에 유지하고, 규칙으로 고른 다른 분야 메뉴를 추천한다
+      container.append(
+        h(
+          "section",
+          { class: "banner reco" },
+          h("h3", {}, "다른 분야 연습을 추천해요"),
+          h(
+            "ul",
+            {},
+            plan.recommendations.map((r) =>
+              h("li", {}, h("strong", {}, r.menu), h("span", { class: "badge" }, `${r.field} · ${r.difficulty}`), h("span", { class: "muted" }, r.text))
             )
           )
         )
@@ -835,6 +877,35 @@
         );
       }
     });
+
+    // 주별 계획 삭제: 지워질 기록 건수를 보여 주는 팝업에서 확인을 받은 뒤에만 지운다.
+    hooks.deletePlan = async (plan) => {
+      const week = plan.week;
+      const rows = isFuture(week) ? [] : await api("/records/week?week=" + encodeURIComponent(week)).catch(() => []);
+      const n = rows.reduce((sum, r) => sum + r.shots.length + r.ratings.length, 0);
+      const yes = await confirmDialog({
+        title: "이 주 계획을 삭제할까요?",
+        lines: [
+          `${week} (${weekLabel(week)}) 주의 계획을 삭제해요.`,
+          n ? `그 주에 입력한 기록 ${n}건도 함께 지워져요.` : "그 주에 입력한 기록은 없어요.",
+          "삭제하면 되돌릴 수 없어요.",
+        ],
+        okText: n ? `계획과 기록 ${n}건 삭제` : "계획 삭제",
+      });
+      if (!yes) return;
+      try {
+        const done = await api("/plans?week=" + encodeURIComponent(week), { method: "DELETE" });
+        await loadWeeks(); // 주 목록과 "처음 시작했어요" 선택도 다시 맞춘다
+        drawWeekBar();
+        await select(state.week);
+        board.prepend(h("p", { class: "msg info", role: "status" }, `삭제했어요. (기록 ${done.deleted_records}건 함께 삭제)`));
+      } catch (error) {
+        await loadWeeks();
+        drawWeekBar();
+        await select(state.week);
+        board.prepend(h("p", { class: "msg", role: "alert" }, error.message));
+      }
+    };
 
     // 위쪽 탭: 주간 계획 / 분야별 현황. 현황은 탭을 열 때마다 새로 불러온다.
     const planView = h("div", { class: "stack" }, weekBar, h("div", { class: "layout" }, form.node, board));

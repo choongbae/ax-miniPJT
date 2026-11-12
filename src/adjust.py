@@ -4,6 +4,7 @@
 - 상향: 같은 종류에서 더 어려운 연습 메뉴로 바꾼다. (슛은 무빙슛·캐치앤슛·거리 확대 쪽)
 - 유지: 그대로 둔다. 기록이 없던 연습 메뉴(carry_over)는 다음 주 계획에 다시 넣는다.
 이미 가장 쉽거나 어려워서(또는 장비가 없어서) 바꿀 메뉴가 없으면 바꾸라고 요구하지 않는다.
+올릴 곳이 없는 상향은 그 메뉴를 계획에 유지하게 하고, 다른 분야 추천은 src/recommend.py가 규칙으로 따로 한다.
 """
 from src.models import Drill, UserInput, WeeklyPlan
 from src.tools import DrillJudgment, Verdict
@@ -56,6 +57,10 @@ def format_judgments(
                     f"- '{j.drill}': {j.verdict} ({j.reason}). 이 연습 메뉴는 빼고 {how}로 바꾸세요. "
                     f"후보: {', '.join(c.name for c in candidates)}"
                 )
+            elif j.verdict == "상향":  # 올라갈 메뉴가 없다: 유지한다. 다른 분야 추천은 서비스가 따로 안내한다 (src/recommend.py)
+                lines.append(
+                    f"- '{j.drill}': 상향 ({j.reason}). 더 어려운 연습 메뉴가 없으니 이 메뉴를 바꾸지 말고 이번 주 계획에 그대로 유지해서 넣으세요."
+                )
             else:
                 lines.append(
                     f"- '{j.drill}': {j.verdict} ({j.reason}). 바꿀 수 있는 연습 메뉴가 더 없으니 이 메뉴를 그대로 넣고 "
@@ -87,7 +92,10 @@ def validate_adjustments(
             continue
         candidates = adjustment_candidates(drill, j.verdict, catalog, user)
         if not candidates:
-            continue  # 이미 가장 쉽거나 어려워서(또는 장비가 없어서) 바꿀 수 없다
+            # 이미 가장 쉽거나 어려워서(또는 장비가 없어서) 바꿀 수 없다. 올릴 곳이 없는 상향은 계획에서 그 메뉴를 유지해야 한다.
+            if j.verdict == "상향" and j.drill not in in_plan:
+                violations.append(f"'{j.drill}'은(는) 상향이지만 더 어려운 연습 메뉴가 없으므로 이번 주 계획에 그대로 유지해서 넣어야 합니다.")
+            continue
         if j.drill in in_plan:
             violations.append(
                 f"'{j.drill}'은(는) 지난주 결과가 {j.verdict}이므로 같은 연습 메뉴를 그대로 넣으면 안 됩니다."

@@ -21,6 +21,7 @@ from src.knowledge import NOT_FOUND_ANSWER, answer_knowledge
 from src.knowledge import SYSTEM as KNOWLEDGE_SYSTEM
 from src.llm import structured_chain
 from src.models import Drill
+from src.recommend import field_record_counts, recommend_other_fields
 from src.records import DEFAULT_PATH, RecordStore, judge_week, next_week_key, previous_week_keys, week_key
 from src.tools import DrillJudgment, judge_drill, load_drills, validate_user_input
 from src.tracing import traced
@@ -358,6 +359,13 @@ def _answer_unchecked(
     if state.get("status") == "ok":  # 다음에 판정할 수 있게 이번에 준 계획을 저장한다
         store.save_plan(user_id, week if parsed.intent == "plan" else next_week_key(week), state["plan"])
     plan_text = format_result(state)
+    if state.get("status") == "ok":  # 올릴 곳이 없는 상향은 유지하고 다른 분야를 추천한다 (규칙으로 고름)
+        target = week if parsed.intent == "plan" else next_week_key(week)
+        in_plan = {pd.name for day in state["plan"].days for pd in day.drills}
+        recs = recommend_other_fields(judgments, catalog, user, field_record_counts(store, user_id, target, catalog), in_plan)
+        if recs:
+            _step(trace, "recommend_other_field", ", ".join(r.kept for r in recs), "; ".join(f"{r.kept} 유지 -> {r.menu}({r.field}) 추천" for r in recs))
+            plan_text += "\n\n[다른 분야 추천]\n" + "\n".join(f"- {r.text}" for r in recs)
     header = ("\n".join(lines) + "\n\n") if lines else ""
     answer = header + plan_text + _assumption_text(assumptions + plan_assumptions)
     return QueryResponse(answer, state.get("contexts", []), trace, "plan" if parsed.intent == "plan" else "record")
