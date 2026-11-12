@@ -1,0 +1,20 @@
+# Secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local data
+chroma_db/
+*.sqlite
+*.sqlite3
+agent_log.jsonl
+data/records.json
+data/app.db
+data/app.db-wal
+data/app.db-shm
+data/checkpoints.db
+data/checkpoints.db-wal
+data/checkpoints.db-shm

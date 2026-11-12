@@ -1,0 +1,205 @@
+[
+  {
+    "name": "제자리 자유투",
+    "purpose": "같은 자세와 리듬을 반복해서 슛 폼의 기본을 익힌다",
+    "requires": ["골대"],
+    "difficulty": "초급",
+    "is_shooting": true
+  },
+  {
+    "name": "미드레인지 제자리 점프슛",
+    "purpose": "가까운 중거리에서 멈춘 상태로 쏘며 릴리스 타이밍을 안정시킨다",
+    "requires": ["골대"],
+    "difficulty": "초급",
+    "is_shooting": true
+  },
+  {
+    "name": "3점 캐치앤슛",
+    "purpose": "패스를 받는 즉시 쏘는 동작으로 3점 라인에서의 슛 타이밍을 익힌다",
+    "requires": ["골대"],
+    "difficulty": "중급",
+    "is_shooting": true
+  },
+  {
+    "name": "풀업 점퍼",
+    "purpose": "드리블 후 멈춰서 쏘며 이동 중 중심 잡기와 슛 전환을 연습한다",
+    "requires": ["골대"],
+    "difficulty": "중급",
+    "is_shooting": true
+  },
+  {
+    "name": "컷 후 무빙슛",
+    "purpose": "콘을 수비수로 두고 움직이며 받아 쏘는 실전 상황의 슛을 연습한다",
+    "requires": ["골대", "콘"],
+    "difficulty": "상급",
+    "is_shooting": true
+  },
+  {
+    "name": "양손 레이업",
+    "purpose": "좌우 번갈아 마무리하며 발 순서와 림 근처 마무리 정확도를 높인다",
+    "requires": ["골대"],
+    "difficulty": "초급",
+    "is_shooting": false
+  },
+  {
+    "name": "제자리 볼 핸들링",
+    "purpose": "장소와 장비 제약 없이 손끝 감각과 공에 대한 익숙함을 키운다",
+    "requires": [],
+    "difficulty": "초급",
+    "is_shooting": false
+  },
+  {
+    "name": "양손 크로스오버 드리블",
+    "purpose": "좌우 손 전환 속도와 약한 손의 컨트롤을 키운다",
+    "requires": [],
+    "difficulty": "중급",
+    "is_shooting": false
+  },
+  {
+    "name": "왼손 콘 지그재그 드리블",
+    "purpose": "콘 사이를 왼손으로 빠져나가며 방향 전환과 약한 손 컨트롤을 연습한다",
+    "requires": ["콘"],
+    "difficulty": "중급",
+    "is_shooting": false
+  },
+  {
+    "name": "벽 패스",
+    "purpose": "벽을 상대로 패스와 받기를 반복해 혼자서도 패스 정확도를 높인다",
+    "requires": ["벽"],
+    "difficulty": "초급",
+    "is_shooting": false
+  },
+  {
+    "name": "제자리 한 손 드리블",
+    "purpose": "한 자리에서 오른손과 왼손을 번갈아 공을 튕기며 공을 다루는 기본 감각을 익힌다",
+    "requires": [],
+    "difficulty": "초급",
+    "is_shooting": false
+  },
+  {
+    "name": "걸으며 드리블",
+    "purpose": "걸으면서 공을 놓치지 않고 드리블해 이동 중에도 공을 다루는 감각을 키운다",
+    "requires": [],
+    "difficulty": "초급",
+    "is_shooting": false
+  },
+  {
+    "name": "다리 사이 8자 드리블",
+    "purpose": "다리 사이로 공을 8자로 돌리며 튕겨 양손 전환과 손 감각을 키운다",
+    "requires": [],
+    "difficulty": "초급",
+    "is_shooting": false
+  },
+  {
+    "name": "슛 폼 연습",
+    "purpose": "골대 없이 슛 자세로 공을 위로 쏘아 올려 받으며 공을 놓는 동작과 팔 뻗기를 익힌다",
+    "requires": [],
+    "difficulty": "초급",
+    "is_shooting": false
+  },
+  {
+    "name": "레이업 스텝 연습",
+    "purpose": "골대 없이 레이업의 발 순서와 점프 리듬만 반복해서 몸에 익힌다",
+    "requires": [],
+    "difficulty": "초급",
+    "is_shooting": false
+  },
+  {
+    "name": "피벗 연습",
+    "purpose": "한 발을 바닥에 고정하고 다른 발로 돌며 공을 지키는 동작과 중심 잡기를 익힌다",
+    "requires": [],
+    "difficulty": "초급",
+    "is_shooting": false
+  },
+  {
+    "name": "이동 크로스오버 드리블",
+    "purpose": "앞으로 걸어 나가며 공을 좌우 손으로 바꿔 튕겨 움직이면서 손을 바꾸는 속도를 키운다",
+    "requires": [],
+    "difficulty": "중급",
+    "is_shooting": false
+  },
+  {
+    "name": "비하인드 더 백 드리블",
+    "purpose": "공을 등 뒤로 넘겨 반대 손으로 받으며 수비를 피해 손을 바꾸는 동작을 익힌다",
+    "requires": [],
+    "difficulty": "중급",
+    "is_shooting": false
+  },
+  {
+    "name": "인앤아웃 드리블",
+    "purpose": "공을 몸 쪽으로 당겼다 바깥으로 밀어내며 방향을 속이는 동작과 손목 컨트롤을 키운다",
+    "requires": [],
+    "difficulty": "중급",
+    "is_shooting": false
+  },
+  {
+    "name": "점프 스톱 연습",
+    "purpose": "달리다가 두 발로 동시에 멈춰 균형을 잡고 바로 다음 동작으로 이어가는 연습을 한다",
+    "requires": [],
+    "difficulty": "중급",
+    "is_shooting": false
+  },
+  {
+    "name": "유로스텝 연습",
+    "purpose": "골대 없이 좌우로 한 발씩 피해 가는 두 걸음 마무리 동작을 반복해 수비를 피하는 레이업 발 순서를 익힌다",
+    "requires": [],
+    "difficulty": "중급",
+    "is_shooting": false
+  },
+  {
+    "name": "한 손 슛 폼 연습",
+    "purpose": "골대 없이 슛하는 손 하나만으로 공을 위로 쏘아 올려 공을 놓는 순간의 손목과 팔 모양을 다듬는다",
+    "requires": [],
+    "difficulty": "중급",
+    "is_shooting": false
+  },
+  {
+    "name": "스텝백 점퍼",
+    "purpose": "드리블 후 뒤로 크게 한 걸음 물러나 수비와 거리를 만든 뒤 쏘는 슛을 익힌다",
+    "requires": ["골대"],
+    "difficulty": "상급",
+    "is_shooting": true
+  },
+  {
+    "name": "드리블 풀업 3점",
+    "purpose": "3점 라인 밖에서 드리블 후 멈춰 쏘며 먼 거리에서의 슛 균형을 연습한다",
+    "requires": ["골대"],
+    "difficulty": "상급",
+    "is_shooting": true
+  },
+  {
+    "name": "콘 수비 앞 슛",
+    "purpose": "콘을 수비수로 두고 피해 움직인 뒤 쏘며 수비가 가까운 상황의 슛을 연습한다",
+    "requires": ["골대", "콘"],
+    "difficulty": "상급",
+    "is_shooting": true
+  },
+  {
+    "name": "시간 제한 레이업 연속 마무리",
+    "purpose": "정해진 시간 안에 좌우 레이업을 이어서 하며 빠른 속도에서도 발 순서를 지키는 연습을 한다",
+    "requires": ["골대"],
+    "difficulty": "상급",
+    "is_shooting": false
+  },
+  {
+    "name": "콘 스피드 변화 드리블",
+    "purpose": "콘 사이를 느리게 갔다가 갑자기 빠르게 바꿔 속도 변화로 수비를 따돌리는 드리블을 익힌다",
+    "requires": ["콘"],
+    "difficulty": "상급",
+    "is_shooting": false
+  },
+  {
+    "name": "고개 든 드리블",
+    "purpose": "공을 보지 않고 시선을 정면에 둔 채 여러 드리블을 이어서 손 감각으로 공을 다루는 연습을 한다",
+    "requires": [],
+    "difficulty": "상급",
+    "is_shooting": false
+  },
+  {
+    "name": "벽 한 손 패스 연속",
+    "purpose": "벽에 한 손으로 빠르게 패스를 이어 받아 던지며 손목 힘과 반응 속도를 키운다",
+    "requires": ["벽"],
+    "difficulty": "상급",
+    "is_shooting": false
+  }
+]

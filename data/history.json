@@ -1,0 +1,149 @@
+[
+  {
+    "id": "birth-of-basketball",
+    "title": "농구의 탄생",
+    "story": "농구는 1891년 미국 매사추세츠주 스프링필드에서 체육 교사 제임스 네이스미스가 만들었습니다. 처음에는 복숭아 바구니를 골대로 썼는데 바닥이 막혀 있어서, 공이 들어갈 때마다 공을 꺼내야 했습니다.",
+    "keywords": ["탄생", "발명", "만들", "네이스미스", "복숭아", "바구니", "스프링필드", "처음"],
+    "sources": [
+      "https://jr.nba.com/james-naismith-invention-basketball",
+      "https://www.history.com/articles/how-a-canadian-invented-basketball"
+    ],
+    "checked": "2026-11-12"
+  },
+  {
+    "id": "first-game",
+    "title": "첫 경기",
+    "story": "1891년 12월 21일에 열린 첫 농구 경기는 한 팀에 9명씩, 축구공으로 치러졌다고 알려져 있습니다. 이 경기는 1대 0으로 끝났다고 전해집니다.",
+    "keywords": ["첫 경기", "첫 게임", "첫 시합", "축구공", "9명", "12월"],
+    "sources": [
+      "https://www.history.com/this-day-in-history/december-21/basketball-invention-james-naismith",
+      "https://www.fiba.basketball/en/news/basketballs-first-game-was-125-years-ago-today"
+    ],
+    "checked": "2026-11-12"
+  },
+  {
+    "id": "original-rules",
+    "title": "처음 만든 규칙",
+    "story": "네이스미스가 처음 만든 농구 규칙은 13개였습니다. 이 규칙의 원본은 지금 미국 캔자스대학교가 보관하고 있습니다.",
+    "keywords": ["규칙", "13개", "원본", "캔자스", "네이스미스"],
+    "sources": [
+      "https://www.history.com/articles/how-a-canadian-invented-basketball",
+      "https://betterbasketball.com.au/rules-history/"
+    ],
+    "checked": "2026-11-12"
+  },
+  {
+    "id": "origin-of-dribble",
+    "title": "드리블의 시작",
+    "story": "농구 초기 규칙에서는 공을 든 채 달릴 수 없어서 패스로만 공을 옮겼습니다. 드리블은 이 규칙을 지키면서 공을 가지고 움직이려는 방법으로 점차 발전했다고 알려져 있습니다.",
+    "keywords": ["드리블", "패스", "초기 규칙", "달릴"],
+    "sources": [
+      "https://www.history.com/articles/how-a-canadian-invented-basketball",
+      "https://betterbasketball.com.au/rules-history/"
+    ],
+    "checked": "2026-11-12"
+  },
+  {
+    "id": "backboard",
+    "title": "백보드가 생긴 이유",
+    "story": "골대 뒤에 백보드가 생긴 것은 관중이 공을 건드리지 못하게 하려는 이유가 컸다고 알려져 있습니다. 지금은 백보드를 맞혀서 넣는 뱅크슛이 슛 방법의 하나로 쓰입니다.",
+    "keywords": ["백보드", "뱅크슛", "골대", "관중"],
+    "sources": [
+      "https://kids.britannica.com/students/article/basketball/273121",
+      "https://hooptactics.net/premium/basketballbasics/bb8rulesevolution.php"
+    ],
+    "checked": "2026-11-12",
+    "note": "백보드가 처음 쓰인 연도는 자료마다 달라서 이야기에 연도를 쓰지 않았다."
+  },
+  {
+    "id": "orange-ball",
+    "title": "오렌지색 농구공",
+    "story": "농구공은 예전에 주로 갈색이었는데, 1950년대 후반에 토니 힝클이 공이 잘 보이도록 오렌지색 공을 만들었다고 알려져 있습니다. 이 공은 1958년 미국 대학 농구 결승전에서 처음 큰 무대에 올랐다고 합니다.",
+    "keywords": ["공", "오렌지", "색깔", "갈색", "힝클"],
+    "sources": [
+      "https://en.wikipedia.org/wiki/Tony_Hinkle",
+      "https://www.mentalfloss.com/sports/basketball/why-are-basketballs-orange"
+    ],
+    "checked": "2026-11-12",
+    "note": "연도는 자료마다 조금씩 달라(1957년 개발, 1958년 결승전 첫 사용) 후반·알려져 있다는 표현을 썼다."
+  },
+  {
+    "id": "olympic-sport",
+    "title": "올림픽 정식 종목",
+    "story": "남자 농구는 1936년 베를린 올림픽에서 처음으로 올림픽 정식 종목이 되었습니다. 농구를 만든 제임스 네이스미스도 그 대회를 직접 찾았다고 전해집니다.",
+    "keywords": ["올림픽", "1936", "베를린", "정식 종목", "남자"],
+    "sources": [
+      "https://www.olympedia.org/editions/11/sports/BKB",
+      "https://www.thecanadianencyclopedia.ca/en/article/basketball-at-the-1936-olympic-summer-games"
+    ],
+    "checked": "2026-11-12"
+  },
+  {
+    "id": "three-point-line",
+    "title": "3점슛의 도입",
+    "story": "NBA에는 1979-80 시즌에 3점슛이 처음 도입되었습니다. 그 전까지 NBA에서는 어디서 쏴도 같은 점수였지만, 지금은 3점 라인 바깥에서 쏘면 더 높은 점수를 얻습니다.",
+    "keywords": ["3점", "3점슛", "3점 라인", "점수", "슛"],
+    "sources": [
+      "https://en.wikipedia.org/wiki/Three-point_field_goal",
+      "https://jr.nba.com/3-point-shot/"
+    ],
+    "checked": "2026-11-12"
+  },
+  {
+    "id": "shot-clock",
+    "title": "24초 공격 제한 시간",
+    "story": "NBA는 1954-55 시즌부터 공격 제한 시간 24초를 도입했습니다. 이 규칙으로 경기 속도가 빨라지고 득점이 늘었다고 알려져 있습니다.",
+    "keywords": ["24초", "공격 제한", "제한 시간", "시간", "속도"],
+    "sources": [
+      "https://www.nba.com/history/season-recap/1954-55",
+      "https://en.wikipedia.org/wiki/Shot_clock"
+    ],
+    "checked": "2026-11-12",
+    "note": "누가 24초를 처음 만들었는지는 자료마다 달라서 이름을 쓰지 않았다."
+  },
+  {
+    "id": "dream-team",
+    "title": "드림팀",
+    "story": "1992년 바르셀로나 올림픽에서 활동 중인 NBA 선수들이 처음으로 미국 올림픽 대표팀으로 나서 드림팀이라고 불렸습니다. 이 팀은 전승으로 금메달을 땄습니다.",
+    "keywords": ["드림팀", "1992", "바르셀로나", "올림픽", "NBA 선수"],
+    "sources": [
+      "https://en.wikipedia.org/wiki/1992_United_States_men%27s_Olympic_basketball_team",
+      "https://olympics.com/en/topics/this-is-the-dream-team"
+    ],
+    "checked": "2026-11-12"
+  },
+  {
+    "id": "womens-first-game",
+    "title": "여자 농구의 시작",
+    "story": "여자 농구는 1893년 3월 미국 스미스 대학에서 첫 대학 경기를 했다고 알려져 있습니다. 이 학교의 체육 교사 센다 베렌슨이 여성에 맞게 규칙을 바꾸어 널리 퍼뜨렸습니다.",
+    "keywords": ["여자", "여성", "스미스", "베렌슨"],
+    "sources": [
+      "https://www.history.com/this-day-in-history/first-womens-college-basketball-game-smith-college",
+      "https://www.smith.edu/newssmith/spring2004/basketball.php"
+    ],
+    "checked": "2026-11-12",
+    "note": "경기 날짜와 참가 학년은 자료마다 달라서 월까지만 썼다."
+  },
+  {
+    "id": "womens-olympics",
+    "title": "올림픽 여자 농구",
+    "story": "여자 농구는 1976년 몬트리올 올림픽에서 처음으로 올림픽 종목이 되었습니다. 첫 대회의 금메달은 소련이 가져갔습니다.",
+    "keywords": ["여자", "올림픽", "1976", "몬트리올"],
+    "sources": [
+      "https://www.fiba.basketball/en/news/50-years-of-womens-olympic-basketball-from-a-long-awaited-debut-to-a-global-celebration",
+      "https://www.olympedia.org/editions/19/sports/BKB"
+    ],
+    "checked": "2026-11-12"
+  },
+  {
+    "id": "kbl-start",
+    "title": "한국프로농구의 출발",
+    "story": "한국프로농구(KBL)는 1997년 8개 구단으로 첫 시즌을 시작했습니다. 다음 시즌에 두 구단이 더 들어와 10개 구단 체제가 되었습니다.",
+    "keywords": ["KBL", "한국", "프로농구", "국내", "1997"],
+    "sources": [
+      "https://en.wikipedia.org/wiki/Korean_Basketball_League",
+      "https://en.wikipedia.org/wiki/1997_KBL_season"
+    ],
+    "checked": "2026-11-12"
+  }
+]
