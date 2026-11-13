@@ -10,7 +10,7 @@
 - Day 4: Tool — 입력·계획 검증, 난이도 판정, 장비 안내를 모델이 아닌 파이썬 함수(도구)로 분리하고 호출 순서를 `trace`에 남긴다 (`src/tools.py`, `src/orchestrator.py`). `ToolNode`는 쓰지 않았다: 도구 호출 순서를 코드가 정하기 때문이다.
 - Day 5: 가드레일 — 정규식 입력 가드레일(프롬프트 유출, 다른 사용자, 영상 분석, 진단, 난이도 강제)과 출력 누설 검사는 모델 없이 동작한다 (`src/guardrails.py`). 계획 검증(연습일 수, 시간 합, 장비)을 어기면 재생성한다.
 - Day 7: Memory · Observability · Eval — 사용자별 기록·주간 계획을 SQLite에 누적해 다음 주 난이도에 쓰고, LangSmith로 호출을 추적하며(`src/tracing.py`, 사용자 ID는 해시), 32건 평가 세트로 두 차례 자체 평가했다 (`evaluation/`).
-- 쓰지 않은 것: Day 6 Multi-Agent, MCP, ReAct 에이전트. 도구 호출 순서를 코드가 정하는 고정 분기로 만들었고, 모델이 도구를 스스로 골라 반복 호출하는 방식(ReAct)은 시도하지 않았다. 난이도 판정과 검증을 코드가 하는 원칙과 `expected_tools` 순서 확인이 쉬운 점은 이 구조의 장점이다.
+- 쓰지 않은 것: Day 6 Multi-Agent, MCP.
 
 ## 구현 범위
 - 묶음 1~4: 입력 검증, 규칙 기반 난이도 판정, 기록 저장, 검색(RAG), 질문 단위 에이전트와 가드레일, `/query` API
