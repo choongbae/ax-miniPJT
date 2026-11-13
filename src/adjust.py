@@ -29,6 +29,22 @@ def adjustment_candidates(
     ]
 
 
+def floor_notices(judgments: list[DrillJudgment] | None, catalog: list[Drill], user: UserInput) -> list[str]:
+    """하향 판정인데 더 쉬운 메뉴가 없을 때(가장 쉬운 초급이거나 장비로 할 수 있는 쉬운 메뉴가 없음) 사용자에게 보일 안내.
+
+    판정은 그대로 두고, 이번 주도 같은 메뉴를 하되 세트·횟수를 줄이라고 규칙으로 안내한다 (모델 아님).
+    """
+    by_name = {d.name: d for d in catalog}
+    out: list[str] = []
+    for j in judgments or []:
+        drill = by_name.get(j.drill)
+        if drill is None or j.carry_over or j.verdict != "하향" or adjustment_candidates(drill, "하향", catalog, user):
+            continue
+        why = "이미 가장 쉬운 난이도(초급)라" if drill.difficulty == "초급" else "지금 가진 장소·장비로 할 수 있는 더 쉬운 메뉴가 없어"
+        out.append(f"'{drill.name}'은(는) {why} 낮출 곳이 없어요. 이번 주도 같은 메뉴를 하되 세트나 횟수를 줄여서 해 보세요.")
+    return out
+
+
 def format_judgments(
     judgments: list[DrillJudgment] | None, catalog: list[Drill], user: UserInput
 ) -> str:

@@ -114,3 +114,25 @@ def test_format_judgments_includes_candidates_and_carry_over():
 def test_format_judgments_empty_is_empty_string():
     assert format_judgments(None, CATALOG, USER) == ""
     assert format_judgments([], CATALOG, USER) == ""
+
+
+def test_floor_notice_for_lowest_level_drill():
+    from src.adjust import floor_notices
+
+    j = DrillJudgment("양손 레이업", "하향", "가장 많은 평가가 '어려웠음'(어려웠음 1번) -> 하향")
+    notes = floor_notices([j], CATALOG, USER)
+    assert len(notes) == 1 and "'양손 레이업'" in notes[0] and "가장 쉬운 난이도(초급)" in notes[0] and "세트나 횟수를 줄여" in notes[0]
+    shot = DrillJudgment("제자리 자유투", "하향", "성공률 20.0% -> 하향")
+    assert len(floor_notices([shot], CATALOG, USER)) == 1
+
+
+def test_floor_notice_only_when_nothing_easier_exists():
+    from src.adjust import floor_notices
+
+    # 더 쉬운 메뉴가 있는 하향, 유지, 상향, 기록 없음은 안내하지 않는다
+    assert floor_notices([LOWER], CATALOG, USER) == []
+    keep = DrillJudgment("양손 레이업", "유지", "적당")
+    up = DrillJudgment("스텝백 점퍼", "상향", "성공률 70.0% -> 상향")
+    carry = DrillJudgment("양손 레이업", "유지", "기록 없음", carry_over=True)
+    assert floor_notices([keep, up, carry], CATALOG, USER) == []
+    assert floor_notices(None, CATALOG, USER) == [] and floor_notices([], CATALOG, USER) == []

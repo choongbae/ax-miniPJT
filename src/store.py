@@ -29,11 +29,11 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS shot_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL, drill TEXT NOT NULL, week TEXT NOT NULL,
-    attempts INTEGER NOT NULL, makes INTEGER NOT NULL
+    attempts INTEGER NOT NULL, makes INTEGER NOT NULL, slot TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS rating_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL, drill TEXT NOT NULL, week TEXT NOT NULL, rating TEXT NOT NULL
+    user_id TEXT NOT NULL, drill TEXT NOT NULL, week TEXT NOT NULL, rating TEXT NOT NULL, slot TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS plans (
     user_id TEXT NOT NULL, week TEXT NOT NULL, plan_json TEXT NOT NULL, meta_json TEXT NOT NULL DEFAULT '{}',
@@ -56,6 +56,9 @@ class SqliteStore:
             columns = [row["name"] for row in conn.execute("PRAGMA table_info(plans)")]
             if "meta_json" not in columns:  # 메타가 없던 시절에 만든 DB를 고친다
                 conn.execute("ALTER TABLE plans ADD COLUMN meta_json TEXT NOT NULL DEFAULT '{}'")
+            for table in ("shot_records", "rating_records"):  # 카드 슬롯이 없던 시절에 만든 DB를 고친다 (예전 기록은 슬롯 '')
+                if "slot" not in [row["name"] for row in conn.execute(f"PRAGMA table_info({table})")]:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN slot TEXT NOT NULL DEFAULT ''")
 
     @contextmanager
     def _conn(self):
@@ -169,6 +172,51 @@ class SqliteStore:
             out.setdefault(r["week"], {}).setdefault(r["drill"], {"shots": [], "ratings": []})["shots"].append((r["attempts"], r["makes"]))
         for r in ratings:
             out.setdefault(r["week"], {}).setdefault(r["drill"], {"shots": [], "ratings": []})["ratings"].append(r["rating"])
+        return out
+
+    def replace_record(
+        self,
+        user_id: str,
+        drill: str,
+        week: str,
+        shot: tuple[int, int] | None = None,
+        rating: str | None = None,
+        slot: str = "",
+        absorb_legacy: bool = False,
+    ) -> list[str]:
+        errors = validate_shot_record(*shot) if shot is not None else validate_rating(rating)
+        if errors:
+            return errors
+        if slot == "":
+            where, extra = "user_id = ? AND drill = ? AND week = ?", ()
+        elif absorb_legacy:
+            where, extra = "user_id = ? AND drill = ? AND week = ? AND (slot = ? OR slot = '')", (slot,)
+        else:
+            where, extra = "user_id = ? AND drill = ? AND week = ? AND slot = ?", (slot,)
+        with self._conn() as conn:  # 한 트랜잭션에서 지우고 넣는다: 중간에 실패해도 기존 기록이 그대로 남는다
+            for table in ("shot_records", "rating_records"):
+                conn.execute(f"DELETE FROM {table} WHERE {where}", (user_id, drill, week, *extra))
+            if shot is not None:
+                conn.execute(
+                    "INSERT INTO shot_records (user_id, drill, week, attempts, makes, slot) VALUES (?, ?, ?, ?, ?, ?)",
+                    (user_id, drill, week, int(shot[0]), int(shot[1]), slot),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO rating_records (user_id, drill, week, rating, slot) VALUES (?, ?, ?, ?, ?)",
+                    (user_id, drill, week, rating, slot),
+                )
+        return []
+
+    def slot_records(self, user_id: str, week: str) -> dict[str, dict[str, dict]]:
+        out: dict[str, dict[str, dict]] = {}
+        with self._conn() as conn:
+            shots = conn.execute("SELECT drill, slot, attempts, makes FROM shot_records WHERE user_id = ? AND week = ? ORDER BY id", (user_id, week)).fetchall()
+            ratings = conn.execute("SELECT drill, slot, rating FROM rating_records WHERE user_id = ? AND week = ? ORDER BY id", (user_id, week)).fetchall()
+        for r in shots:
+            out.setdefault(r["drill"], {}).setdefault(r["slot"], {"shots": [], "ratings": []})["shots"].append((r["attempts"], r["makes"]))
+        for r in ratings:
+            out.setdefault(r["drill"], {}).setdefault(r["slot"], {"shots": [], "ratings": []})["ratings"].append(r["rating"])
         return out
 
     def delete_plan(self, user_id: str, week: str) -> bool:

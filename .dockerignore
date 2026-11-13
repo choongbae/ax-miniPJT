@@ -1,0 +1,14 @@
+.env
+.git
+.claude
+.ouroboros
+.pytest_cache
+__pycache__
+*.py[cod]
+chroma_db
+data/app.db*
+data/checkpoints.db*
+data/records.json
+tests
+screenshot-*.png
+*.md

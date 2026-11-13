@@ -109,7 +109,7 @@ def test_query_contract_paths_and_schemas_are_unchanged():
     # /query 말고는 모두 규약 밖의 추가(로그인용 /auth/*, 로그인한 사용자의 웹 화면 전용 /plans·/records)
     assert set(schema["paths"]) == {
         "/query", "/auth/register", "/auth/login", "/auth/logout", "/auth/me",
-        "/plans", "/plans/{plan_id}/decision", "/plans/current", "/plans/weeks", "/progress", "/records", "/records/week",
+        "/plans", "/plans/{plan_id}/decision", "/plans/current", "/plans/weeks", "/progress", "/story", "/records", "/records/week",
     }
     assert set(schema["paths"]["/plans"]) == {"post", "delete"}  # 웹 전용: 계획 만들기와 주별 계획 삭제 (T40)
     req = schema["components"]["schemas"]["QueryRequest"]

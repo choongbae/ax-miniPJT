@@ -160,3 +160,81 @@ def build_progress(records: dict, catalog: list[Drill], weeks: list[str]) -> lis
             }
         )
     return out
+
+
+def build_summary(fields: list[dict], weeks: list[str]) -> dict:
+    """다섯 분야를 한눈에 보는 종합표 (T44). 기준 주는 보이는 주 중 기록이 있는 가장 최근 주이고, 기록이 하나도 없으면 이번 주(맨 끝 주)다.
+
+    분야마다 기준 주의 값(슛은 성공률·시도·성공, 평가는 평균·건수), 그 주의 다음 주 난이도 판정 건수, 최근 추이,
+    보이는 주 중 기록이 있는 주 수와 마지막 기록 주를 담는다. 추이는 슛 기록이 있으면 성공률을, 없으면 체감 난이도를 쓴다."""
+    current = weeks[-1]
+    recorded = [w for i, w in enumerate(weeks) if any(f["weeks"][i]["drills_recorded"] for f in fields)]
+    base = recorded[-1] if recorded else current
+    index = weeks.index(base)
+    rows = []
+    for f in fields:
+        row = f["weeks"][index]
+        recorded_weeks = [r["week"] for r in f["weeks"] if r["drills_recorded"]]
+        has_shots = any(r["attempts"] > 0 for r in f["weeks"])
+        trend, kind = (f["shot_trend"], "성공률") if has_shots else (f["rating_trend"], "체감 난이도")
+        rows.append(
+            {
+                "field": f["field"],
+                "has_data": f["has_data"],
+                "base_has_records": row["drills_recorded"] > 0,
+                "attempts": row["attempts"],
+                "makes": row["makes"],
+                "rate": row["rate"],
+                "enough": row["enough"],
+                "rating_count": row["rating_count"],
+                "rating_avg": row["rating_avg"],
+                "verdicts": row["verdicts"],
+                "trend_kind": kind if trend["status"] != "none" else None,
+                "trend_status": trend["status"],
+                "trend_text": trend["text"],
+                "recorded_weeks": len(recorded_weeks),
+                "last_recorded_week": recorded_weeks[-1] if recorded_weeks else None,
+            }
+        )
+    return {
+        "base_week": base,
+        "is_current": base == current,  # False이면 이번 주 기록이 아직 없어서 가장 최근 기록 주를 기준으로 한 것
+        "fields_with_data": sum(1 for f in fields if f["has_data"]),
+        "rows": rows,
+        "radar": build_radar(fields, weeks, index),
+    }
+
+
+RADAR_COMPARE_WEEKS = 4  # 방사형 차트에서 기준 주와 겹쳐 보는 비교 주 (기준 주의 몇 주 전)
+RADAR_MIN_AXES = 3  # 기준 주에 기록이 있는 분야가 이만큼은 있어야 도형이 의미가 있다
+
+
+def radar_score(row: dict) -> tuple[float | None, bool]:
+    """분야의 한 주를 0~100 점수로 바꾼다. (점수, 표본이 적은가).
+
+    그 주에 슛 시도가 있으면 성공률(%) 그대로, 없고 자기평가만 있으면 (체감 평균 - 1) / 2 * 100 (어려웠음 0, 적당 50, 쉬웠음 100),
+    둘 다 없으면 None(기록 없음, 0점으로 보지 않는다). 서로 다른 지표를 한 도형에 놓기 위한 참고용 환산이다."""
+    if row["attempts"] > 0:
+        return row["rate"], not row["enough"]
+    if row["rating_avg"] is not None:
+        return round((row["rating_avg"] - 1) / 2 * 100, 1), row["rating_count"] < MIN_TREND_RATINGS
+    return None, False
+
+
+def build_radar(fields: list[dict], weeks: list[str], base_index: int) -> dict:
+    """방사형 차트 값: 기준 주(진한 면)와 그 4주 전(점선)의 분야별 0~100 점수."""
+    compare_index = base_index - RADAR_COMPARE_WEEKS
+    axes = []
+    for f in fields:
+        current, current_thin = radar_score(f["weeks"][base_index])
+        previous, previous_thin = radar_score(f["weeks"][compare_index]) if compare_index >= 0 else (None, False)
+        axes.append(
+            {"field": f["field"], "current": current, "previous": previous, "current_thin": current_thin, "previous_thin": previous_thin}
+        )
+    return {
+        "base_week": weeks[base_index],
+        "compare_week": weeks[compare_index] if compare_index >= 0 else None,
+        "axes": axes,
+        "axes_with_data": sum(1 for a in axes if a["current"] is not None),
+        "min_axes": RADAR_MIN_AXES,
+    }

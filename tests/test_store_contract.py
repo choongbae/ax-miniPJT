@@ -239,3 +239,41 @@ def test_delete_drafts_only_removes_that_users_drafts_of_that_week(tmp_path):
     assert s.delete_drafts("u", "2026-W47") == [] and s.get_draft(a) is not None
     assert s.delete_drafts("v", WEEK) == [] and s.get_draft(a) is not None
     assert s.delete_drafts("u", WEEK) == [a] and s.get_draft(a) is None
+
+
+# --- 기록을 주마다 한 건으로 등록·갱신 (T41) ----------------------------------------------------
+
+def test_replace_record_keeps_exactly_one_record_per_drill_and_week(store):
+    assert store.replace_record("u", "3점 캐치앤슛", WEEK, shot=(50, 10)) == []
+    assert store.replace_record("u", "3점 캐치앤슛", WEEK, shot=(50, 30)) == []
+    assert store.shots("u", "3점 캐치앤슛", WEEK) == [(50, 30)]  # 쌓이지 않고 갱신된다
+    assert store.count_week_records("u", WEEK) == 1
+
+
+def test_replace_record_replaces_older_multi_session_records(store):
+    store.add_shot("u", "3점 캐치앤슛", WEEK, 20, 5)
+    store.add_shot("u", "3점 캐치앤슛", WEEK, 20, 6)
+    store.add_rating("u", "양손 레이업", WEEK, "쉬웠음")
+    store.add_rating("u", "양손 레이업", WEEK, "적당")
+    store.replace_record("u", "3점 캐치앤슛", WEEK, shot=(40, 20))
+    store.replace_record("u", "양손 레이업", WEEK, rating="어려웠음")
+    assert store.shots("u", "3점 캐치앤슛", WEEK) == [(40, 20)] and store.ratings("u", "양손 레이업", WEEK) == ["어려웠음"]
+
+
+def test_replace_record_touches_only_that_drill_week_and_user(store):
+    store.add_shot("u", "3점 캐치앤슛", WEEK, 20, 5)  # 같은 메뉴, 다른 주
+    store.add_shot("u", "3점 캐치앤슛", "2026-W45", 30, 9)
+    store.add_shot("u", "제자리 자유투", WEEK, 10, 8)  # 같은 주, 다른 메뉴
+    store.add_shot("v", "3점 캐치앤슛", WEEK, 99, 9)  # 다른 사용자
+    store.save_plan("u", WEEK, plan_of("3점 캐치앤슛"))  # 계획은 기록이 아니다
+    store.replace_record("u", "3점 캐치앤슛", WEEK, shot=(50, 30))
+    assert store.shots("u", "3점 캐치앤슛", "2026-W45") == [(30, 9)]
+    assert store.shots("u", "제자리 자유투", WEEK) == [(10, 8)] and store.shots("v", "3점 캐치앤슛", WEEK) == [(99, 9)]
+    assert store.get_plan("u", WEEK) is not None
+
+
+def test_replace_record_with_invalid_values_changes_nothing(store):
+    store.replace_record("u", "3점 캐치앤슛", WEEK, shot=(50, 30))
+    assert store.replace_record("u", "3점 캐치앤슛", WEEK, shot=(20, 25)) == ["성공 수(25)가 시도 수(20)보다 많을 수 없습니다."]
+    assert store.replace_record("u", "양손 레이업", WEEK, rating="보통") == ["자기평가는 쉬웠음, 적당, 어려웠음 중 하나여야 합니다."]
+    assert store.shots("u", "3점 캐치앤슛", WEEK) == [(50, 30)] and store.ratings("u", "양손 레이업", WEEK) == []  # 기존 기록이 그대로

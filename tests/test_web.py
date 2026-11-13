@@ -116,7 +116,7 @@ def test_plan_is_built_from_the_form_and_saved(user, env):
     first = plan["days"][0]
     assert first["day"] == "월" and first["total_minutes"] == 40
     drill = first["drills"][0]
-    assert set(drill) == {"name", "sets", "reps", "minutes", "purpose", "difficulty", "is_shooting", "requires", "tip", "mistake"}
+    assert set(drill) == {"name", "sets", "reps", "minutes", "purpose", "difficulty", "is_shooting", "requires", "tip", "mistake", "slot"}
     assert drill["name"] == "제자리 볼 핸들링" and drill["difficulty"] == "초급" and drill["is_shooting"] is False
     assert drill["tip"] and drill["mistake"]  # 카드의 자세 팁과 흔한 실수
     assert env.store.get_plan("minsu", "2026-W46") is not None
@@ -206,7 +206,7 @@ def test_plans_are_per_user(env):
 
 def test_last_weeks_records_are_applied_when_making_the_next_plan(user, env):
     make_plan(user, FORM)  # W46 계획: 볼 핸들링, 한 손 드리블
-    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음", "쉬웠음"]})
+    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음"]})
     env.clock.today = W47
     # 지난주 결과가 상향인 볼 핸들링은 빼고, 기록이 없던 한 손 드리블은 다시 넣는다
     env.gen.plan_fn = lambda u, violations, judgments: plan_with("제자리 한 손 드리블", "양손 크로스오버 드리블")
@@ -248,10 +248,13 @@ def test_shot_record_is_saved_and_judged_case3(user):
     assert r.json() == {"drill": "3점 캐치앤슛", "verdict": "하향", "reason": "성공률 20.0% -> 하향", "carry_over": False}
 
 
-def test_shot_records_add_up_within_the_week_case2(user):
-    post_shots(user, "3점 캐치앤슛", (50, 10))
-    r = post_shots(user, "3점 캐치앤슛", (50, 30))
-    assert r.json()["verdict"] == "유지" and "40.0%" in r.json()["reason"]
+def test_saving_a_shot_record_again_replaces_it_instead_of_adding_up(user, env):
+    """웹 화면은 연습 메뉴·주마다 기록이 한 건이다. 다시 저장하면 쌓이지 않고 갱신된다 (T41). 합산은 /query와 저장소의 규칙이다."""
+    first = post_shots(user, "3점 캐치앤슛", (50, 10)).json()
+    assert first["verdict"] == "하향"
+    second = post_shots(user, "3점 캐치앤슛", (50, 30)).json()
+    assert second["verdict"] == "상향" and "60.0%" in second["reason"]  # 50회 중 30회만 남는다 (합산이면 100회 중 40회로 유지)
+    assert env.store.shots("minsu", "3점 캐치앤슛", "2026-W46") == [(50, 30)]
 
 
 def test_exactly_60_percent_raises_case15(user):
@@ -264,13 +267,15 @@ def test_under_20_attempts_keeps_case22(user):
 
 
 def test_rating_record_for_a_non_shot_drill_case5(user):
-    r = user.post("/records", json={"drill": "양손 레이업", "ratings": ["쉬웠음", "쉬웠음", "적당"]}).json()
+    r = user.post("/records", json={"drill": "양손 레이업", "ratings": ["쉬웠음"]}).json()
     assert r["verdict"] == "상향" and "쉬웠음" in r["reason"]
 
 
-def test_tie_keeps_case14(user):
-    r = user.post("/records", json={"drill": "양손 레이업", "ratings": ["쉬웠음", "적당", "어려웠음"]}).json()
-    assert r["verdict"] == "유지" and "동수" in r["reason"]
+def test_a_new_rating_replaces_the_old_one(user, env):
+    assert user.post("/records", json={"drill": "양손 레이업", "ratings": ["쉬웠음"]}).json()["verdict"] == "상향"
+    again = user.post("/records", json={"drill": "양손 레이업", "ratings": ["어려웠음"]}).json()
+    assert again["verdict"] == "하향"
+    assert env.store.ratings("minsu", "양손 레이업", "2026-W46") == ["어려웠음"]  # 한 건만 남는다
 
 
 def test_past_weeks_are_used_for_the_boundary_correction_case23(user, env):
@@ -330,10 +335,10 @@ def test_week_records_are_empty_without_a_plan(user):
 
 def test_week_records_show_each_plan_drill_with_next_week_preview(user):
     make_plan(user, FORM)  # 볼 핸들링, 한 손 드리블
-    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["어려웠음", "어려웠음", "적당"]})
-    rows = {r["drill"]: r for r in user.get("/records/week").json()}
+    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["어려웠음"], "slot": "월"})
+    rows = {r["drill"]: r for r in user.get("/records/week").json() if r["slot"] == "월"}  # 월요일 카드
     assert set(rows) == {"제자리 볼 핸들링", "제자리 한 손 드리블"}
-    assert rows["제자리 볼 핸들링"]["ratings"] == ["어려웠음", "어려웠음", "적당"] and rows["제자리 볼 핸들링"]["verdict"] == "하향"
+    assert rows["제자리 볼 핸들링"]["ratings"] == ["어려웠음"] and rows["제자리 볼 핸들링"]["verdict"] == "하향"
     assert rows["제자리 한 손 드리블"]["carry_over"] is True and rows["제자리 한 손 드리블"]["verdict"] == "유지"
     assert rows["제자리 볼 핸들링"]["is_shooting"] is False
 
@@ -342,10 +347,31 @@ def test_week_records_list_shots_for_shooting_drills(env):
     env.gen.plan_fn = lambda u, violations, judgments: plan_with("3점 캐치앤슛", minutes=20)
     signup(env.c)
     assert make_plan(env.c, FORM).json()["status"] == "confirmed"
-    post_shots(env.c, "3점 캐치앤슛", (50, 10), (50, 30))
+    post_shots(env.c, "3점 캐치앤슛", (50, 30))
     row = env.c.get("/records/week").json()[0]
-    assert row["shots"] == [{"attempts": 50, "makes": 10}, {"attempts": 50, "makes": 30}]
-    assert row["verdict"] == "유지" and row["is_shooting"] is True
+    assert row["shots"] == [{"attempts": 50, "makes": 30}]
+    assert row["verdict"] == "상향" and row["is_shooting"] is True
+
+
+def test_older_multi_session_records_are_still_listed_and_saving_turns_them_into_one(env):
+    """예전 방식(여러 건)으로 저장된 기록은 목록에 그대로 보이고, 화면에서 저장하면 한 건으로 바뀐다 (T41)."""
+    env.gen.plan_fn = lambda u, violations, judgments: plan_with("3점 캐치앤슛", minutes=20)
+    signup(env.c)
+    make_plan(env.c, FORM)
+    env.store.add_shot("minsu", "3점 캐치앤슛", "2026-W46", 50, 10)
+    env.store.add_shot("minsu", "3점 캐치앤슛", "2026-W46", 50, 30)
+    row = env.c.get("/records/week").json()[0]
+    assert row["shots"] == [{"attempts": 50, "makes": 10}, {"attempts": 50, "makes": 30}] and row["verdict"] == "유지"  # 합계 100회 중 40회
+    post_shots(env.c, "3점 캐치앤슛", (20, 12))
+    assert env.store.shots("minsu", "3점 캐치앤슛", "2026-W46") == [(20, 12)]
+
+
+def test_only_one_record_can_be_sent_at_a_time(user):
+    for body in (
+        {"drill": "양손 레이업", "ratings": ["쉬웠음", "적당"]},
+        {"drill": "3점 캐치앤슛", "shots": [{"attempts": 10, "makes": 5}, {"attempts": 10, "makes": 6}]},
+    ):
+        assert user.post("/records", json=body).status_code == 422
 
 
 # --- 계약은 그대로 ---------------------------------------------------------------------------

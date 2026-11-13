@@ -40,7 +40,7 @@ def test_a_draft_for_another_week_is_not_saved_until_confirmed_and_saves_to_that
 
 def test_the_difficulty_of_a_week_comes_from_the_week_before_it(user, env):
     make_plan(user, {**FORM, "week": PAST})  # W44 계획: 볼 핸들링, 한 손 드리블
-    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음", "쉬웠음"], "week": PAST})
+    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음"], "week": PAST})
     env.gen.plan_fn = lambda u, v, j: plan_with("제자리 한 손 드리블", "양손 크로스오버 드리블")
     after = make_plan(user, {**FORM, "week": "2026-W45", "equipment": [], "days_per_week": 1, "level": "초급"}).json()["plan"]
     assert {j["drill"]: j["verdict"] for j in after["last_week"]}["제자리 볼 핸들링"] == "상향"  # W44 기록이 W45 계획에 반영
@@ -62,9 +62,9 @@ def test_records_can_be_entered_for_past_and_current_weeks_but_not_future_weeks(
 def test_records_are_kept_per_week(user):
     make_plan(user, {**FORM, "week": PAST})
     make_plan(user, FORM)
-    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["어려웠음"], "week": PAST})
-    past = {r["drill"]: r for r in user.get("/records/week", params={"week": PAST}).json()}
-    now = {r["drill"]: r for r in user.get("/records/week").json()}
+    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["어려웠음"], "week": PAST, "slot": "월"})
+    past = {r["drill"]: r for r in user.get("/records/week", params={"week": PAST}).json() if r["slot"] == "월"}
+    now = {r["drill"]: r for r in user.get("/records/week").json() if r["slot"] == "월"}
     assert past["제자리 볼 핸들링"]["ratings"] == ["어려웠음"] and past["제자리 볼 핸들링"]["verdict"] == "하향"
     assert now["제자리 볼 핸들링"]["ratings"] == [] and now["제자리 볼 핸들링"]["carry_over"] is True  # 이번 주에는 섞이지 않는다
 

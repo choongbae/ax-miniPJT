@@ -21,6 +21,17 @@ def week_key(d: date) -> str:
     return f"{year}-W{week:02d}"
 
 
+def plan_slots(plan: WeeklyPlan) -> list[tuple[str, str]]:
+    """계획의 카드마다 (연습 메뉴 이름, 슬롯). 슬롯은 요일이고, 같은 요일에 같은 메뉴가 또 나오면 '월#2'처럼 번호를 붙인다."""
+    out: list[tuple[str, str]] = []
+    for day in plan.days:
+        seen: dict[str, int] = {}
+        for pd in day.drills:
+            seen[pd.name] = seen.get(pd.name, 0) + 1
+            out.append((pd.name, day.day if seen[pd.name] == 1 else f"{day.day}#{seen[pd.name]}"))
+    return out
+
+
 def week_start(week: str) -> date | None:
     """'2026-W46' 같은 주 값의 월요일. 형식이 틀리거나 없는 주(예: 2026-W60)면 None."""
     match = re.fullmatch(r"(\d{4})-W(\d{2})", week or "")
@@ -130,6 +141,52 @@ class RecordStore:
             if e["user_id"] != user_id or e["week"] not in wanted or "plan" in e:
                 continue
             slot = out.setdefault(e["week"], {}).setdefault(e["drill"], {"shots": [], "ratings": []})
+            if "rating" in e:
+                slot["ratings"].append(e["rating"])
+            else:
+                slot["shots"].append((e["attempts"], e["makes"]))
+        return out
+
+    def replace_record(
+        self,
+        user_id: str,
+        drill: str,
+        week: str,
+        shot: tuple[int, int] | None = None,
+        rating: str | None = None,
+        slot: str = "",
+        absorb_legacy: bool = False,
+    ) -> list[str]:
+        """그 연습 카드의 기록을 한 건으로 바꾼다 (웹 화면의 '등록 후 갱신'). 슛이면 shot=(시도, 성공), 아니면 rating.
+
+        slot은 계획의 카드(요일, 같은 요일에 같은 메뉴가 또 나오면 '월#2')다. 그 카드의 기록만 바꾸고 같은 메뉴의 다른 카드는 건드리지 않는다.
+        absorb_legacy=True이면 슬롯이 없던 예전 기록도 함께 지운다(그 메뉴의 첫 카드를 저장할 때). slot이 비어 있으면 그 메뉴·주의 기록 전체를 바꾼다.
+        값이 틀리면 아무것도 바꾸지 않고 안내 목록을 돌려준다."""
+        errors = validate_shot_record(*shot) if shot is not None else validate_rating(rating)
+        if errors:
+            return errors
+
+        def replaced(e: dict) -> bool:
+            if not (e["user_id"] == user_id and e["week"] == week and e.get("drill") == drill and "plan" not in e):
+                return False
+            own = e.get("slot", "")
+            return slot == "" or own == slot or (absorb_legacy and own == "")
+
+        with self._lock:
+            self._entries = [e for e in self._entries if not replaced(e)]
+            entry = {"user_id": user_id, "drill": drill, "week": week, "slot": slot}
+            entry.update({"attempts": int(shot[0]), "makes": int(shot[1])} if shot is not None else {"rating": rating})
+            self._entries.append(entry)
+            self._save()
+        return []
+
+    def slot_records(self, user_id: str, week: str) -> dict[str, dict[str, dict]]:
+        """그 주의 기록을 카드별로: {연습 메뉴: {슬롯: {"shots": [(시도, 성공)], "ratings": [평가]}}}. 슬롯이 없던 예전 기록은 슬롯 ''."""
+        out: dict[str, dict[str, dict]] = {}
+        for e in self._entries:
+            if e["user_id"] != user_id or e["week"] != week or "plan" in e:
+                continue
+            slot = out.setdefault(e["drill"], {}).setdefault(e.get("slot", ""), {"shots": [], "ratings": []})
             if "rating" in e:
                 slot["ratings"].append(e["rating"])
             else:

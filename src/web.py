@@ -17,12 +17,13 @@ from pydantic import BaseModel, Field
 
 from src.agent import make_checkpointer, resume_with_decision, start_for_approval
 from src.guardrails import check_input
+from src.history import basketball_history
 from src.knowledge import cards_by_name
 from src.models import RATINGS, Drill, WeeklyPlan
 from src.orchestrator import judge_last_week
-from src.progress import build_progress
+from src.progress import build_progress, build_summary
 from src.recommend import field_record_counts, recommend_other_fields
-from src.records import judge_week, previous_week_keys, week_key, week_start
+from src.records import judge_week, plan_slots, previous_week_keys, week_key, week_start
 from src.retriever import load_menu_docs
 from src.tools import DrillJudgment, judge_drill, load_drills, validate_user_input
 
@@ -56,9 +57,13 @@ class ShotIn(BaseModel):
 
 class RecordIn(BaseModel):
     drill: str = Field(min_length=1, max_length=60)
-    shots: list[ShotIn] = Field(default_factory=list, max_length=20)
-    ratings: list[Literal["쉬웠음", "적당", "어려웠음"]] = Field(default_factory=list, max_length=20)
+    # 연습 메뉴·주마다 기록은 한 건이다: 슛은 shots 한 쌍, 슛 외는 ratings 하나. 다시 저장하면 그 한 건을 갱신한다.
+    shots: list[ShotIn] = Field(default_factory=list, max_length=1)
+    ratings: list[Literal["쉬웠음", "적당", "어려웠음"]] = Field(default_factory=list, max_length=1)
     week: str | None = None  # 기록할 주. 없으면 이번 주. 아직 오지 않은 주는 안 된다
+    # 기록할 연습 카드(요일, 같은 요일에 같은 메뉴가 또 나오면 '월#2'). 같은 메뉴가 여러 요일에 있어도 카드마다 따로 기록한다.
+    # 없으면 그 메뉴의 이 주 기록 전체를 한 건으로 바꾼다(이전 방식).
+    slot: str | None = Field(default=None, pattern="^([월화수목금토일](#[2-9])?)?$")
 
 
 # --- 응답 ---------------------------------------------------------------------------
@@ -81,6 +86,7 @@ class DrillOut(BaseModel):
     requires: list[str]
     tip: str = ""
     mistake: str = ""
+    slot: str = ""  # 이 카드의 기록 슬롯 (요일, 같은 요일에 같은 메뉴가 또 나오면 '월#2')
 
 
 class DayOut(BaseModel):
@@ -115,6 +121,12 @@ class PlanResponse(BaseModel):
     message: str = ""
     violations: list[str] = Field(default_factory=list)
     plan: PlanOut | None = None
+
+
+class StoryOut(BaseModel):
+    id: str
+    text: str
+    sources: list[str]  # 사실을 확인한 자료 주소
 
 
 class DeletedOut(BaseModel):
@@ -155,10 +167,53 @@ class FieldProgress(BaseModel):
     rating_trend: TrendOut
 
 
+class SummaryRow(BaseModel):
+    field: str
+    has_data: bool  # 보이는 기간(최근 8주) 안에 기록이 있는가
+    base_has_records: bool  # 기준 주에 기록이 있는가
+    attempts: int
+    makes: int
+    rate: float | None
+    enough: bool
+    rating_count: int
+    rating_avg: float | None
+    verdicts: dict[str, int]
+    trend_kind: str | None  # 추이가 성공률 기준인지 체감 난이도 기준인지 (기록이 없으면 None)
+    trend_status: Literal["up", "flat", "down", "insufficient", "none"]
+    trend_text: str
+    recorded_weeks: int  # 보이는 기간 중 기록이 있는 주 수
+    last_recorded_week: str | None
+
+
+class RadarAxis(BaseModel):
+    field: str
+    current: float | None  # 기준 주의 0~100 점수 (기록이 없으면 None)
+    previous: float | None  # 비교 주(기준 주의 4주 전)의 0~100 점수
+    current_thin: bool  # 표본이 적은 점 (슛 시도 20회 미만, 평가 3건 미만)
+    previous_thin: bool
+
+
+class RadarOut(BaseModel):
+    base_week: str
+    compare_week: str | None  # 보이는 기간 밖이면 None
+    axes: list[RadarAxis]
+    axes_with_data: int  # 기준 주에 기록이 있는 분야 수
+    min_axes: int  # 차트를 그리는 데 필요한 최소 분야 수
+
+
+class SummaryOut(BaseModel):
+    base_week: str  # 종합표의 기준 주: 기록이 있는 가장 최근 주 (기록이 없으면 이번 주)
+    is_current: bool  # 기준 주가 이번 주인가
+    fields_with_data: int
+    rows: list[SummaryRow]
+    radar: RadarOut
+
+
 class ProgressOut(BaseModel):
     current: str
     weeks: list[str]  # 오래된 주부터, 이번 주까지
     fields: list[FieldProgress]
+    summary: SummaryOut
 
 
 class ShotOut(BaseModel):
@@ -168,6 +223,8 @@ class ShotOut(BaseModel):
 
 class WeekRecord(BaseModel):
     drill: str
+    slot: str = ""  # 이 줄이 가리키는 연습 카드
+    day: str = ""
     is_shooting: bool
     shots: list[ShotOut]
     ratings: list[str]
@@ -195,17 +252,19 @@ def _judgment_out(j: DrillJudgment) -> dict:
 
 def build_plan_out(week: str, plan: WeeklyPlan, by_name: dict[str, Drill], meta: dict) -> PlanOut:
     cards = _cards()
+    slots = iter(plan_slots(plan))  # 카드 순서(요일, 메뉴 순)와 같은 순서
     days = []
     for d in plan.days:
         drills = []
         for pd in d.drills:
+            _, slot = next(slots)
             info = by_name.get(pd.name)
             tip, mistake = _split_card(cards.get(pd.name, []))
             drills.append(
                 DrillOut(
                     name=pd.name, sets=pd.sets, reps=pd.reps, minutes=pd.minutes, purpose=pd.purpose,
                     difficulty=info.difficulty if info else "", is_shooting=bool(info and info.is_shooting),
-                    requires=list(info.requires) if info else [], tip=tip, mistake=mistake,
+                    requires=list(info.requires) if info else [], tip=tip, mistake=mistake, slot=slot,
                 )
             )
         days.append(DayOut(day=d.day, total_minutes=d.total_minutes, drills=drills))
@@ -353,6 +412,15 @@ def add_web_routes(
             status="confirmed", resets_records=removed, plan=build_plan_out(week, state["plan"], by_name, meta)
         )
 
+    @app.get("/story", response_model=StoryOut)
+    def story(request: Request) -> StoryOut:
+        """오늘의 농구 이야기 1건. 모델을 부르지 않고 확인된 이야기 목록(data/history.json)에서만 고른다."""
+        require_login(request)
+        result = basketball_history()
+        if not result.stories:
+            raise HTTPException(status_code=404, detail="보여 줄 이야기가 없어요.")
+        return StoryOut(id=result.ids[0], text=result.stories[0], sources=result.sources)
+
     @app.delete("/plans", response_model=DeletedOut)
     def delete_plan(request: Request, week: str = Query(...)) -> DeletedOut:
         """선택한 주의 계획을 지운다. 그 주의 수행 기록도 함께 지우고(되돌릴 수 없다), 그 주의 승인 대기 초안도 정리한다.
@@ -393,7 +461,8 @@ def add_web_routes(
         shown = list(reversed(previous_week_keys(current, weeks - 1))) + [current]  # 오래된 주부터 이번 주까지
         wanted = shown + previous_week_keys(shown[0], 4)  # 앞 4주는 난이도 판정의 과거 기록 보정에 쓴다
         records = app.state.store.records_for_weeks(user_id, wanted)
-        return ProgressOut(current=current, weeks=shown, fields=build_progress(records, catalog, shown))
+        fields = build_progress(records, catalog, shown)
+        return ProgressOut(current=current, weeks=shown, fields=fields, summary=build_summary(fields, shown))
 
     # --- 기록 ---------------------------------------------------------------------
     @app.post("/records", response_model=JudgmentOut)
@@ -411,11 +480,20 @@ def add_web_routes(
         if week_start(week) > week_start(week_key(today())):
             raise HTTPException(status_code=422, detail="아직 오지 않은 주예요. 연습한 뒤에 기록해 주세요.")
         store = app.state.store
-        errors: list[str] = []
-        for s in body.shots:
-            errors += store.add_shot(user_id, drill.name, week, s.attempts, s.makes)
-        for rating in body.ratings:
-            errors += store.add_rating(user_id, drill.name, week, rating)
+        slot, absorb = body.slot or "", False
+        if slot:
+            plan = store.get_plan(user_id, week)
+            if plan is not None:  # 계획이 있으면 그 계획의 카드여야 한다
+                cards_of_drill = [s for name, s in plan_slots(plan) if name == drill.name]
+                if slot not in cards_of_drill:
+                    raise HTTPException(status_code=422, detail="이 주 계획에 없는 연습 카드예요.")
+                absorb = slot == cards_of_drill[0]  # 슬롯이 없던 예전 기록은 첫 카드에 붙어 있다
+        if body.shots:
+            errors = store.replace_record(
+                user_id, drill.name, week, shot=(body.shots[0].attempts, body.shots[0].makes), slot=slot, absorb_legacy=absorb
+            )
+        else:
+            errors = store.replace_record(user_id, drill.name, week, rating=body.ratings[0], slot=slot, absorb_legacy=absorb)
         if errors:
             raise HTTPException(status_code=422, detail="\n".join(dict.fromkeys(errors)))
         j = judge_drill(
@@ -433,15 +511,28 @@ def add_web_routes(
         plan = store.get_plan(user_id, week)
         if plan is None:
             return []
+        judgments = {j.drill: j for j in judge_week(store, user_id, week, plan, catalog)}  # 난이도 판정은 그 메뉴의 모든 카드 기록을 합쳐서
+        per_card = store.slot_records(user_id, week)
+        cards = plan_slots(plan)
+        first: dict[str, str] = {}
+        for name, slot in cards:
+            first.setdefault(name, slot)
+        days = [day.day for day in plan.days for _ in day.drills]
         out = []
-        for j in judge_week(store, user_id, week, plan, catalog):
-            drill = by_name[j.drill]
+        for (name, slot), day in zip(cards, days):
+            j, drill = judgments.get(name), by_name.get(name)
+            if j is None or drill is None:
+                continue
+            mine = per_card.get(name, {}).get(slot, {"shots": [], "ratings": []})
+            legacy = per_card.get(name, {}).get("", {"shots": [], "ratings": []}) if slot == first[name] else {"shots": [], "ratings": []}
             out.append(
                 WeekRecord(
-                    drill=j.drill,
+                    drill=name,
+                    slot=slot,
+                    day=day,
                     is_shooting=drill.is_shooting,
-                    shots=[ShotOut(attempts=a, makes=m) for a, m in store.shots(user_id, j.drill, week)],
-                    ratings=store.ratings(user_id, j.drill, week),
+                    shots=[ShotOut(attempts=a, makes=m) for a, m in legacy["shots"] + mine["shots"]],
+                    ratings=legacy["ratings"] + mine["ratings"],
                     verdict=j.verdict,
                     reason=j.reason,
                     carry_over=j.carry_over,

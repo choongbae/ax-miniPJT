@@ -19,8 +19,8 @@ def decide(c, draft, decision="confirm"):
 def record_some(c, week=None):
     extra = {"week": week} if week else {}
     assert c.post("/records", json={**SHOT_BODY, **extra}).status_code == 200  # 슛 한 건
-    assert c.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음", "적당"], **extra}).status_code == 200  # 평가 두 건
-    return 3
+    assert c.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음"], **extra}).status_code == 200  # 평가 한 건
+    return 2
 
 
 def week_rows(c, week=None):
@@ -66,15 +66,15 @@ def test_records_of_other_weeks_and_other_users_are_kept(user, env):
     record_some(other)
     decide(user, pending(user, goals=["패스"]))  # 이번 주만 다시 만든다
     assert env.store.count_week_records("minsu", "2026-W46") == 0
-    assert env.store.count_week_records("minsu", PAST) == 3
-    assert env.store.count_week_records("jisu", "2026-W46") == 3
+    assert env.store.count_week_records("minsu", PAST) == 2
+    assert env.store.count_week_records("jisu", "2026-W46") == 2
 
 
 def test_regenerating_a_past_week_resets_that_week_too(user, env):
     make_plan(user, {**FORM, "week": PAST})
     record_some(user, PAST)
     d = pending(user, week=PAST)
-    assert d["resets_records"] == 3
+    assert d["resets_records"] == 2
     decide(user, d)
     assert env.store.count_week_records("minsu", PAST) == 0
 
@@ -84,12 +84,12 @@ def test_records_entered_before_any_plan_exists_are_not_wiped_by_the_first_plan(
     d = pending(user, week=PAST)
     assert d["resets_records"] == 0
     assert decide(user, d)["resets_records"] == 0
-    assert env.store.count_week_records("minsu", PAST) == 3
+    assert env.store.count_week_records("minsu", PAST) == 2
 
 
 def test_the_next_weeks_difficulty_stops_using_the_reset_records(user, env):
     make_plan(user, {**FORM, "week": PAST})
-    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음", "쉬웠음"], "week": PAST})
+    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음"], "week": PAST})
     env.gen.plan_fn = lambda u, v, j: plan_with("제자리 한 손 드리블", "양손 크로스오버 드리블")  # 상향된 볼 핸들링은 빼고 계획
     first = make_plan(user, {**FORM, "week": "2026-W45", "equipment": [], "days_per_week": 1, "level": "초급"}).json()["plan"]["last_week"]
     assert {j["drill"]: j["verdict"] for j in first}["제자리 볼 핸들링"] == "상향"

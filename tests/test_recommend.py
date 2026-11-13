@@ -145,7 +145,7 @@ def test_the_plan_response_carries_the_recommendation_and_keeps_it_after_confirm
     env.gen.plan_fn = lambda u, v, j: plan_with("고개 든 드리블", "제자리 볼 핸들링")
     first = make_plan(user, {**FORM, "week": "2026-W45", "level": "상급", "equipment": []}).json()
     assert first["status"] == "confirmed" and first["plan"]["recommendations"] == []
-    user.post("/records", json={"drill": "고개 든 드리블", "ratings": ["쉬웠음", "쉬웠음", "쉬웠음"], "week": "2026-W45"})
+    user.post("/records", json={"drill": "고개 든 드리블", "ratings": ["쉬웠음"], "week": "2026-W45"})
     draft = user.post("/plans", json={**FORM, "week": "2026-W46", "level": "상급", "equipment": []}).json()
     assert draft["status"] == "pending", draft
     recs = draft["plan"]["recommendations"]
@@ -160,7 +160,7 @@ def test_the_plan_response_carries_the_recommendation_and_keeps_it_after_confirm
 def test_no_recommendation_when_the_raise_can_still_go_up(user, env):
     env.gen.plan_fn = lambda u, v, j: plan_with("제자리 볼 핸들링", "양손 크로스오버 드리블")
     make_plan(user, {**FORM, "week": "2026-W45", "level": "초급", "equipment": []})
-    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음", "쉬웠음"], "week": "2026-W45"})
+    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음"], "week": "2026-W45"})
     env.gen.plan_fn = lambda u, v, j: plan_with("양손 크로스오버 드리블", "이동 크로스오버 드리블")
     r = make_plan(user, {**FORM, "week": "2026-W46", "level": "초급", "equipment": []}).json()
     assert r["status"] == "confirmed" and r["plan"]["recommendations"] == []

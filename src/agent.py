@@ -12,7 +12,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
-from src.adjust import adjustment_candidates, format_judgments, validate_adjustments
+from src.adjust import adjustment_candidates, floor_notices, format_judgments, validate_adjustments
 from src.history import basketball_history
 from src.knowledge import cards_by_name
 from src.llm import get_fallback_llms, get_llm
@@ -303,7 +303,8 @@ def build_graph(generate_fn: GenerateFn = generate_plan, retriever=None, approva
             cards = {n: all_cards[n] for n in names if n in all_cards}
         return {
             "status": "ok" if ok else "failed",
-            "notices": equipment_notices(state["user"], state["catalog"]),
+            "notices": equipment_notices(state["user"], state["catalog"])
+            + (floor_notices(state.get("judgments"), state["catalog"], state["user"]) if ok else []),
             "cards": cards,
             "history": history,
             "log": state.get("log", []) + [entry],

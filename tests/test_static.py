@@ -110,3 +110,65 @@ def test_the_beginner_option_is_shown_only_for_the_first_plan():
     """'농구를 처음 시작했어요'는 계획이 하나도 없는 사용자에게만 보인다 (T38). 동작은 실제 브라우저 확인, 여기서는 연결을 본다."""
     assert "setFirstPlan(info.weeks.length === 0)" in APP_JS  # 주 목록을 불러올 때마다(첫 화면, 계획 확정 뒤) 맞춘다
     assert "beginnerLabel.hidden = !isFirst" in APP_JS
+
+
+def test_the_story_is_fetched_on_plan_creation_and_sits_in_the_right_column():
+    """오늘의 농구 이야기는 오른쪽 열에 있고, 계획 만들기를 누를 때 GET /story로 받는다 (T43, C안에서 위치만 오른쪽 열로). 동작은 실제 브라우저로 확인한다."""
+    assert 'api("/story")' in APP_JS
+    assert 'const rail = h("aside", { class: "rail" }, condCard, glanceCard, recoCard, lastCard, storyBox)' in APP_JS
+    assert "plan.history" not in APP_JS_CODE  # 계획 아래쪽의 옛 이야기 영역은 없다
+    assert "showStory();" in APP_JS  # 계획 요청을 기다리지 않고 바로 시작한다
+    assert ".rail > .story { order: -1; }" in CSS  # 좁은 화면에서는 계획을 기다리는 동안 보이도록 맨 위에 둔다
+
+
+
+def test_the_progress_tab_shows_the_summary_table_first():
+    """분야별 현황 맨 위에 종합표가 있다 (T44). 값은 서버가 계산한 summary를 그대로 쓴다."""
+    assert "summaryCard(data.summary, data.weeks.length)" in APP_JS
+    assert "container.append(summaryCard(" in APP_JS  # 분야 카드(fields)보다 앞에 놓인다
+    assert APP_JS.index("summaryCard(data.summary") < APP_JS.index("data.fields.map(fieldCard)")
+
+
+def test_the_summary_card_draws_a_radar_chart_with_svg_only():
+    """분야별 종합에 방사형 차트가 있다 (T45). 외부 라이브러리 없이 SVG로 그리고, 기록이 적으면 그리지 않고 안내만 한다."""
+    assert "radarBox(summary.radar)" in APP_JS and "function radarChart(radar)" in APP_JS
+    assert "radar.axes_with_data < radar.min_axes" in APP_JS  # 3개 미만이면 안내만
+    assert "a.current == null" in APP_JS  # 기록 없는 분야는 0점이 아니라 '기록 없음'
+    assert "참고용" in APP_JS
+
+
+def test_the_last_week_result_is_collapsible():
+    """'지난주 결과가 이번 계획에 반영됐어요'는 오른쪽 열에서 접혀 있다가 펼치면 보인다 (T46)."""
+    assert 'class: "lastweek"' in APP_JS
+    assert "지난주 결과가 이번 계획에 반영됐어요 (연습 메뉴" in APP_JS
+
+
+
+def test_practice_rows_show_saved_state_and_the_day_strip_shows_completion():
+    """연습 줄은 저장되면 색이 바뀌고, 요일 띠는 그 요일 연습이 모두 저장되면 ✓로 바뀐다 (T47을 C안으로 옮김). 동작은 실제 브라우저로 확인한다."""
+    assert 'row.classList.toggle("saved", savedExists)' in APP_JS
+    assert 'd.btn.classList.toggle("done", complete)' in APP_JS
+    assert "(기록 저장됨)" in APP_JS and "✓ 기록 완료" in APP_JS  # 색만으로 구분하지 않는다 (스크린리더 글자와 완료 글자)
+    assert 'const WEEKDAYS = ["월", "화", "수", "목", "금", "토", "일"]' in APP_JS and "쉬는 날" in APP_JS  # 월~일 요일 띠
+    assert ".item.saved {" in CSS and ".day.done .pie" in CSS
+    dark = CSS.split("@media (prefers-color-scheme: dark)")[1].split("}")[0]
+    assert "--accent:" in dark and "--accent-soft:" in dark  # 저장·완료 색은 어두운 화면에도 따로 정해져 있다
+
+
+
+def test_conditions_are_entered_in_a_popup_with_the_equipment_choices():
+    """조건 입력(장소·장비 골대·콘·벽 포함)은 팝업에서 한다 (T49, C안). 계획을 만들 때 닫히고 오류가 나면 다시 열린다."""
+    assert 'EQUIPMENT = ["골대", "콘", "벽"]' in APP_JS and 'chip("checkbox", "equipment"' in APP_JS
+    assert 'class: "cond-dialog"' in APP_JS and "document.body.append(condDialog)" in APP_JS
+    assert "if (condDialog.open) condDialog.close();" in APP_JS  # 만드는 동안은 팝업을 닫는다
+    assert "hooks.openForm(); // 입력 오류" in APP_JS  # 입력 오류는 팝업에서 다시 안내한다
+    assert "matchFormHeight" not in APP_JS and "ResizeObserver" not in APP_JS
+
+
+def test_plan_generation_shows_a_bouncing_ball_animation_that_stops_with_the_plan():
+    """계획을 만드는 동안 농구공 애니메이션을 보여 주고(SVG+CSS, 외부 이미지 없음), 계획이 나오면 사라진다 (T51). 동작은 실제 브라우저로 확인한다."""
+    assert "function generatingPanel()" in APP_JS and "board.replaceChildren(generatingPanel());" in APP_JS
+    assert "if (!panel.isConnected) return clearInterval(timer)" in APP_JS  # 화면이 사라지면 경과 시간 갱신을 멈춘다
+    assert "@keyframes ball-bounce" in CSS and "@keyframes ball-spin" in CSS
+    reduced = CSS.split("@media (prefers-reduced-motion: reduce)")[1]
+    assert ".ball, .ball-spin, .ball-shadow { animation: none; }" in reduced  # 움직임을 줄이는 설정이면 애니메이션을 끈다

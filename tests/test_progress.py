@@ -142,7 +142,7 @@ def test_progress_is_empty_but_well_formed_without_records(user):
 
 def test_progress_reflects_records_entered_through_the_web_api(user):
     make_plan(user, FORM)
-    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음", "쉬웠음"]})
+    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음"]})
     make_plan(user, {**FORM, "week": "2026-W44"})
     user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["어려웠음"], "week": "2026-W44"})
     drib = field(user.get("/progress").json()["fields"], "드리블")

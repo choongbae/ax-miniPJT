@@ -13,8 +13,8 @@ def delete(c, week):
 
 def record_some(c, week):
     assert c.post("/records", json={**SHOT_BODY, "week": week}).status_code == 200
-    assert c.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음", "적당"], "week": week}).status_code == 200
-    return 3
+    assert c.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음"], "week": week}).status_code == 200
+    return 2
 
 
 def test_deleting_removes_the_plan_and_that_weeks_records_and_reports_the_count(user, env):
@@ -44,8 +44,8 @@ def test_other_weeks_and_other_users_are_untouched(user, env):
     record_some(other, CUR)
     delete(user, CUR)
     assert user.get("/plans/weeks").json()["weeks"] == [PAST, NEXT]
-    assert env.store.count_week_records("minsu", PAST) == 3  # 다른 주 기록은 그대로
-    assert env.store.get_plan("jisu", CUR) is not None and env.store.count_week_records("jisu", CUR) == 3  # 다른 사용자도 그대로
+    assert env.store.count_week_records("minsu", PAST) == 2  # 다른 주 기록은 그대로
+    assert env.store.get_plan("jisu", CUR) is not None and env.store.count_week_records("jisu", CUR) == 2  # 다른 사용자도 그대로
 
 
 def test_a_future_week_plan_can_be_deleted(user):
@@ -90,7 +90,7 @@ def test_a_pending_draft_of_that_week_is_dropped_but_other_weeks_drafts_are_not(
 
 def test_the_deleted_weeks_records_no_longer_count_for_the_next_weeks_plan(user, env):
     make_plan(user, {**FORM, "week": PAST})
-    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음", "쉬웠음"], "week": PAST})
+    user.post("/records", json={"drill": "제자리 볼 핸들링", "ratings": ["쉬웠음"], "week": PAST})
     env.gen.plan_fn = lambda u, v, j: plan_with("제자리 한 손 드리블", "양손 크로스오버 드리블")
     first = make_plan(user, {**FORM, "week": "2026-W45", "equipment": [], "days_per_week": 1, "level": "초급"}).json()["plan"]["last_week"]
     assert {j["drill"]: j["verdict"] for j in first}["제자리 볼 핸들링"] == "상향"
